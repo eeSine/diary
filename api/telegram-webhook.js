@@ -55,6 +55,10 @@ export default async function handler(req, res) {
             }
         };
         
+        // 检查文本编码
+        console.log('原始文本:', JSON.stringify(message.text));
+        console.log('文本字符数:', message.text.length);
+        
         console.log('发送到GitHub的payload:', JSON.stringify(payload, null, 2));
 
         const githubResponse = await fetch(githubApiUrl, {
