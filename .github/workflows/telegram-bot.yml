@@ -1,4 +1,4 @@
-name: Telegram Diary Bot1
+name: Telegram Diary Bot
 
 on:
   repository_dispatch:
@@ -24,12 +24,14 @@ jobs:
       - name: Process diary entry
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
           cat > process_diary.js << 'EOF'
           const fs = require('fs');
           const path = require('path');
           
-          const payload = JSON.parse(process.env.GITHUB_EVENT_CLIENT_PAYLOAD || '{}');
+          // 从环境变量中读取payload
+          const payload = JSON.parse(process.env.CLIENT_PAYLOAD || '{}');
           const text = payload.text || '';
           
           console.log('Processing message:', text.substring(0, 100));
@@ -108,7 +110,7 @@ jobs:
           processDiary();
           EOF
           
-          export GITHUB_EVENT_CLIENT_PAYLOAD="${{ toJson(github.event.client_payload) }}"
+          # 运行处理脚本
           node process_diary.js > result.txt 2>&1
           
           echo "=== Process Result ==="
