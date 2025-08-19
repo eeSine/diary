@@ -1,4 +1,4 @@
-name: Telegram Diary Bot
+name: Telegram Diary Bot1
 
 on:
   repository_dispatch:
