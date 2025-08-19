@@ -11,180 +11,151 @@ jobs:
       contents: write
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Process diary entry
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      run: |
-        cat > process_diary.js << 'EOF'
-        const fs = require('fs');
-        const path = require('path');
-        
-        const payload = JSON.parse(process.env.GITHUB_EVENT_CLIENT_PAYLOAD || '{}');
-        const text = payload.text || '';
-        const chatId = payload.chat_id || '';
-        
-        console.log('Processing message:', text.substring(0, 100));
-        
-        function parseDiaryEntry(text) {
-            const lines = text.trim().split('\n');
-            if (lines.length === 0) return null;
-            
-            const firstLine = lines[0].trim();
-            const content = lines.slice(1).join('\n').trim();
-            
-            const dateMatch = firstLine.match(/^(\d{4}-\d{2}-\d{2})\s+(.+)$/);
-            if (!dateMatch) return null;
-            
-            const [, date, title] = dateMatch;
-            return { date, title, content, firstLine };
-        }
-        
-        function createSafeFileName(date, title) {
-            const safeTitle = title
-                .replace(/[<>:"/\\|?*]/g, '_')
-                .replace(/\s+/g, '_')
-                .substring(0, 50);
-            return `${date}_${safeTitle}.md`;
-        }
-        
-        async function processDiary() {
-            const diary = parseDiaryEntry(text);
-            if (!diary) {
-                console.log('FORMAT_ERROR');
-                return;
-            }
-            
-            const { date, title, content } = diary;
-            const [year, month] = date.split('-').slice(0, 2);
-            const monthDir = `diaries/${year}-${month}`;
-            const fileName = createSafeFileName(date, title);
-            const filePath = path.join(monthDir, fileName);
-            
-            console.log(`Processing diary for ${date}: ${title}`);
-            console.log(`Target file: ${filePath}`);
-            
-            if (!fs.existsSync('diaries')) {
-                fs.mkdirSync('diaries');
-            }
-            if (!fs.existsSync(monthDir)) {
-                fs.mkdirSync(monthDir, { recursive: true });
-            }
-            
-            let isUpdate = false;
-            if (fs.existsSync(monthDir)) {
-                const existingFiles = fs.readdirSync(monthDir);
-                const existingFile = existingFiles.find(file => {
-                    if (!file.endsWith('.md')) return false;
-                    
-                    const baseName = file.replace('.md', '');
-                    const parts = baseName.split('_');
-                    const fileDate = parts[0];
-                    const fileTitle = parts.slice(1).join('_');
-                    
-                    const currentSafeTitle = title
-                        .replace(/[<>:"/\\|?*]/g, '_')
-                        .replace(/\s+/g, '_')
-                        .substring(0, 50);
-                    
-                    return fileDate === date && fileTitle === currentSafeTitle;
-                });
-                
-                if (existingFile) {
-                    console.log(`Found existing file: ${existingFile}`);
-                    fs.unlinkSync(path.join(monthDir, existingFile));
-                    isUpdate = true;
-                }
-            }
-            
-            const fullContent = `# ${title}
-
-*${date}*
-
-${content}`;
-            
-            fs.writeFileSync(filePath, fullContent, 'utf8');
-            
-            console.log(isUpdate ? 'UPDATED' : 'CREATED');
-            console.log(`File saved successfully: ${filePath}`);
-            
-            if (fs.existsSync(filePath)) {
-                const savedContent = fs.readFileSync(filePath, 'utf8');
-                console.log(`File size: ${savedContent.length} characters`);
-            }
-        }
-        
-        processDiary().catch(error => {
-            console.error('Error processing diary:', error);
-            console.log('ERROR');
-        });
-        EOF
-        
-        export GITHUB_EVENT_CLIENT_PAYLOAD='${{ toJson(github.event.client_payload) }}'
-        node process_diary.js > result.txt 2>&1
-        
-        echo "=== Process Result ==="
-        cat result.txt
-        echo "===================="
-        
-        RESULT=$(grep -E "^(FORMAT_ERROR|UPDATED|CREATED|ERROR)$" result.txt | tail -1)
-        echo "RESULT=$RESULT" >> $GITHUB_ENV
-        
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action Bot"
-        
-        git add diaries/
-        
-        if ! git diff --cached --quiet; then
-          COMMIT_MSG="📝 Add/Update diary entry - $(date '+%Y-%m-%d %H:%M:%S')"
-          git commit -m "$COMMIT_MSG"
-          git push
-          echo "✅ Changes committed and pushed successfully"
-        else
-          echo "ℹ️  No changes to commit"
-        fi
-        
-    - name: Send Telegram response
-      if: always()
-      run: |
-        case "$RESULT" in
-          "FORMAT_ERROR")
-            MESSAGE="❌ 格式错误！%0A%0A请使用以下格式：%0A%0A\`2025-08-25 标题\`%0A日记内容..."
-            ;;
-          "UPDATED")
-            MESSAGE="✅ 日记已更新！%0A%0A可以在网站上查看更新后的内容。"
-            ;;
-          "CREATED")
-            MESSAGE="✅ 日记已添加！%0A%0A新的日记已保存到GitHub仓库。"
-            ;;
-          "ERROR")
-            MESSAGE="❌ 处理失败，请稍后重试或检查格式是否正确。"
-            ;;
-          *)
-            MESSAGE="✅ 处理完成！"
-            ;;
-        esac
-        
-        CHAT_ID='${{ github.event.client_payload.chat_id }}'
-        TELEGRAM_TOKEN='${{ secrets.TELEGRAM_TOKEN }}'
-        
-        if [ -n "$CHAT_ID" ] && [ -n "$TELEGRAM_TOKEN" ]; then
-          echo "Sending response to chat $CHAT_ID"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           
-          curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "chat_id=${CHAT_ID}&text=${MESSAGE}&parse_mode=Markdown"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
           
-          echo "Response sent successfully"
-        else
-          echo "Missing CHAT_ID or TELEGRAM_TOKEN"
-        fi
+      - name: Process diary entry
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          cat > process_diary.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const payload = JSON.parse(process.env.GITHUB_EVENT_CLIENT_PAYLOAD || '{}');
+          const text = payload.text || '';
+          
+          console.log('Processing message:', text.substring(0, 100));
+          
+          function parseDiaryEntry(text) {
+              const lines = text.trim().split('\n');
+              if (lines.length === 0) return null;
+              
+              const firstLine = lines[0].trim();
+              const content = lines.slice(1).join('\n').trim();
+              
+              const dateMatch = firstLine.match(/^(\d{4}-\d{2}-\d{2})\s+(.+)$/);
+              if (!dateMatch) return null;
+              
+              const [, date, title] = dateMatch;
+              return { date, title, content };
+          }
+          
+          function createSafeFileName(date, title) {
+              const safeTitle = title
+                  .replace(/[<>:"/\\|?*]/g, '_')
+                  .replace(/\s+/g, '_')
+                  .substring(0, 50);
+              return date + '_' + safeTitle + '.md';
+          }
+          
+          async function processDiary() {
+              try {
+                  const diary = parseDiaryEntry(text);
+                  if (!diary) {
+                      console.log('FORMAT_ERROR');
+                      return;
+                  }
+                  
+                  const { date, title, content } = diary;
+                  const [year, month] = date.split('-').slice(0, 2);
+                  const monthDir = 'diaries/' + year + '-' + month;
+                  const fileName = createSafeFileName(date, title);
+                  const filePath = path.join(monthDir, fileName);
+                  
+                  console.log('Processing diary for ' + date + ': ' + title);
+                  console.log('Target file: ' + filePath);
+                  
+                  if (!fs.existsSync('diaries')) {
+                      fs.mkdirSync('diaries');
+                  }
+                  if (!fs.existsSync(monthDir)) {
+                      fs.mkdirSync(monthDir, { recursive: true });
+                  }
+                  
+                  let isUpdate = false;
+                  if (fs.existsSync(monthDir)) {
+                      const existingFiles = fs.readdirSync(monthDir);
+                      const safeTitle = title.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').substring(0, 50);
+                      const targetFileName = date + '_' + safeTitle + '.md';
+                      
+                      if (existingFiles.includes(targetFileName)) {
+                          console.log('Found existing file: ' + targetFileName);
+                          fs.unlinkSync(path.join(monthDir, targetFileName));
+                          isUpdate = true;
+                      }
+                  }
+                  
+                  const fullContent = '# ' + title + '\n\n*' + date + '*\n\n' + content;
+                  fs.writeFileSync(filePath, fullContent, 'utf8');
+                  
+                  console.log(isUpdate ? 'UPDATED' : 'CREATED');
+                  console.log('File saved successfully: ' + filePath);
+                  
+              } catch (error) {
+                  console.error('Error processing diary:', error);
+                  console.log('ERROR');
+              }
+          }
+          
+          processDiary();
+          EOF
+          
+          export GITHUB_EVENT_CLIENT_PAYLOAD="${{ toJson(github.event.client_payload) }}"
+          node process_diary.js > result.txt 2>&1
+          
+          echo "=== Process Result ==="
+          cat result.txt
+          echo "===================="
+          
+          RESULT=$(grep -E "^(FORMAT_ERROR|UPDATED|CREATED|ERROR)$" result.txt | tail -1 || echo "UNKNOWN")
+          echo "RESULT=$RESULT" >> $GITHUB_ENV
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add diaries/
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "Add/Update diary entry"
+            git push
+            echo "Changes committed and pushed successfully"
+          else
+            echo "No changes to commit"
+          fi
+          
+      - name: Send Telegram response
+        if: always()
+        run: |
+          case "$RESULT" in
+            "FORMAT_ERROR")
+              MESSAGE="❌ 格式错误！请使用格式: 2025-08-25 标题"
+              ;;
+            "UPDATED")
+              MESSAGE="✅ 日记已更新！"
+              ;;
+            "CREATED")
+              MESSAGE="✅ 日记已添加！"
+              ;;
+            "ERROR")
+              MESSAGE="❌ 处理失败，请重试"
+              ;;
+            *)
+              MESSAGE="✅ 处理完成"
+              ;;
+          esac
+          
+          CHAT_ID="${{ github.event.client_payload.chat_id }}"
+          
+          if [ -n "$CHAT_ID" ] && [ -n "${{ secrets.TELEGRAM_TOKEN }}" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+              -d "chat_id=${CHAT_ID}" \
+              -d "text=${MESSAGE}"
+            echo "Response sent"
+          fi
