@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的日记</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .month-selector {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .month-selector:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .diary-entry {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+        
+        .diary-entry:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+        
+        .diary-header {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .diary-date {
+            font-size: 0.8em;
+            color: #718096;
+            font-weight: normal;
+        }
+        
+        .diary-content {
+            color: #4a5568;
+            line-height: 1.8;
+        }
+        
+        .diary-content h1, .diary-content h2, .diary-content h3 {
+            color: #2d3748;
+            margin: 20px 0 15px 0;
+        }
+        
+        .diary-content h1 { font-size: 1.5em; }
+        .diary-content h2 { font-size: 1.3em; }
+        .diary-content h3 { font-size: 1.1em; }
+        
+        .diary-content p {
+            margin-bottom: 15px;
+        }
+        
+        .diary-content ul, .diary-content ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        
+        .diary-content li {
+            margin-bottom: 8px;
+        }
+        
+        .diary-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 20px;
+            margin: 20px 0;
+            font-style: italic;
+            color: #718096;
+        }
+        
+        .diary-content code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .diary-content pre {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .no-entries {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 50px;
+            color: #718096;
+            font-size: 1.2em;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #fff;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .months-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .month-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .month-card:hover, .month-card.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-3px);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .diary-entry {
+                padding: 20px;
+            }
+            
+            .diary-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📖 我的日记</h1>
+            <p>记录生活的点点滴滴</p>
+        </div>
+        
+        <div id="months-container" class="months-grid"></div>
+        
+        <div class="controls">
+            <button class="refresh-btn" onclick="loadAvailableMonths()">🔄 刷新</button>
+        </div>
+        
+        <div id="diary-container">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <script>
+        // GitHub配置 - 请修改为你的信息
+        const GITHUB_CONFIG = {
+            owner: 'YOUR_USERNAME',        // 你的GitHub用户名
+            repo: 'YOUR_DIARY_REPO',       // 你的日记仓库名
+            branch: 'main'                 // 分支名，通常是main或master
+        };
+        
+        let currentMonth = null;
+        let availableMonths = [];
+        
+        // 获取GitHub文件
+        async function fetchGitHubFile(path) {
+            const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${GITHUB_CONFIG.branch}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 404) return null;
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                const data = await response.json();
+                return atob(data.content);
+            } catch (error) {
+                console.error(`获取文件失败: ${path}`, error);
+                return null;
+            }
+        }
+        
+        // 获取目录内容
+        async function fetchGitHubDirectory(path = '') {
+            const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${GITHUB_CONFIG.branch}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 404) return [];
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`获取目录失败: ${path}`, error);
+                return [];
+            }
+        }
+        
+        // 加载可用月份
+        async function loadAvailableMonths() {
+            try {
+                const contents = await fetchGitHubDirectory('diaries');
+                const months = contents
+                    .filter(item => item.type === 'dir' && /^\d{4}-\d{2}$/.test(item.name))
+                    .map(item => item.name)
+                    .sort()
+                    .reverse(); // 最新的月份在前
+                
+                availableMonths = months;
+                displayMonths(months);
+                
+                // 默认加载最新月份
+                if (months.length > 0 && !currentMonth) {
+                    loadMonth(months[0]);
+                } else if (months.length === 0) {
+                    displayNoDiaries();
+                }
+            } catch (error) {
+                console.error('加载月份失败:', error);
+                displayError('加载月份失败: ' + error.message);
+            }
+        }
+        
+        // 显示月份选择
+        function displayMonths(months) {
+            const container = document.getElementById('months-container');
+            if (months.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = months.map(month => {
+                const [year, monthNum] = month.split('-');
+                const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                const monthName = monthNames[parseInt(monthNum) - 1];
+                
+                return `
+                    <button class="month-card ${month === currentMonth ? 'active' : ''}" 
+                            onclick="loadMonth('${month}')">
+                        ${year}<br>${monthName}
+                    </button>
+                `;
+            }).join('');
+        }
+        
+        // 加载指定月份的日记
+        async function loadMonth(month) {
+            currentMonth = month;
+            const container = document.getElementById('diary-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+            
+            // 更新月份选择状态
+            displayMonths(availableMonths);
+            
+            try {
+                const files = await fetchGitHubDirectory(`diaries/${month}`);
+                const markdownFiles = files
+                    .filter(file => file.name.endsWith('.md'))
+                    .sort((a, b) => b.name.localeCompare(a.name)); // 按日期倒序
+                
+                if (markdownFiles.length === 0) {
+                    container.innerHTML = `<div class="no-entries">📝 ${month} 还没有日记</div>`;
+                    return;
+                }
+                
+                const diaries = [];
+                for (const file of markdownFiles) {
+                    const content = await fetchGitHubFile(`diaries/${month}/${file.name}`);
+                    if (content) {
+                        const fileName = file.name.replace('.md', '');
+                        const [date, ...titleParts] = fileName.split('_');
+                        const title = titleParts.join('_') || '无标题';
+                        
+                        diaries.push({
+                            date,
+                            title,
+                            content: content.trim(),
+                            fileName: file.name
+                        });
+                    }
+                }
+                
+                displayDiaries(diaries);
+                
+            } catch (error) {
+                console.error('加载日记失败:', error);
+                displayError('加载日记失败: ' + error.message);
+            }
+        }
+        
+        // 显示日记
+        function displayDiaries(diaries) {
+            const container = document.getElementById('diary-container');
+            
+            if (diaries.length === 0) {
+                container.innerHTML = '<div class="no-entries">📝 本月还没有日记</div>';
+                return;
+            }
+            
+            container.innerHTML = diaries.map(diary => {
+                const renderedContent = marked.parse(diary.content);
+                return `
+                    <div class="diary-entry">
+                        <div class="diary-header">
+                            <span>${diary.title}</span>
+                            <span class="diary-date">${diary.date}</span>
+                        </div>
+                        <div class="diary-content">${renderedContent}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 显示无日记状态
+        function displayNoDiaries() {
+            const container = document.getElementById('diary-container');
+            container.innerHTML = `
+                <div class="no-entries">
+                    📝 还没有日记，快通过Telegram机器人添加第一篇吧！
+                    <br><br>
+                    <strong>使用方法：</strong><br>
+                    发送格式：<code>2025-08-25 今天的总结</code><br>
+                    然后输入日记内容
+                </div>
+            `;
+        }
+        
+        // 显示错误
+        function displayError(message) {
+            const container = document.getElementById('diary-container');
+            container.innerHTML = `
+                <div class="error">
+                    ❌ ${message}
+                    <br><br>
+                    请检查：
+                    <ul>
+                        <li>GitHub仓库配置是否正确</li>
+                        <li>仓库是否为公开状态</li>
+                        <li>网络连接是否正常</li>
+                    </ul>
+                    <button onclick="loadAvailableMonths()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">重试</button>
+                </div>
+            `;
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查配置
+            if (GITHUB_CONFIG.owner === 'YOUR_USERNAME' || GITHUB_CONFIG.repo === 'YOUR_DIARY_REPO') {
+                displayError('请在代码中配置你的GitHub用户名和仓库名');
+                return;
+            }
+            
+            loadAvailableMonths();
+        });
+        
+        // 每5分钟自动刷新当前月份
+        setInterval(() => {
+            if (currentMonth) {
+                loadMonth(currentMonth);
+            }
+        }, 300000); // 5分钟
+    </script>
+</body>
+</html>
