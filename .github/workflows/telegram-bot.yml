@@ -1,0 +1,210 @@
+name: Telegram Diary Bot
+
+on:
+  repository_dispatch:
+    types: [telegram-message]
+
+jobs:
+  process-diary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Process diary entry
+      env:
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      run: |
+        # 创建处理脚本
+        cat > process_diary.js << 'EOF'
+        const fs = require('fs');
+        const path = require('path');
+        
+        // 从环境变量获取消息数据
+        const payload = JSON.parse(process.env.GITHUB_EVENT_CLIENT_PAYLOAD || '{}');
+        const text = payload.text || '';
+        const chatId = payload.chat_id || '';
+        
+        console.log('Processing message:', text.substring(0, 100));
+        
+        // 解析日记格式
+        function parseDiaryEntry(text) {
+            const lines = text.trim().split('\n');
+            if (lines.length === 0) return null;
+            
+            const firstLine = lines[0].trim();
+            const content = lines.slice(1).join('\n').trim();
+            
+            // 提取日期和标题
+            const dateMatch = firstLine.match(/^(\d{4}-\d{2}-\d{2})\s+(.+)$/);
+            if (!dateMatch) return null;
+            
+            const [, date, title] = dateMatch;
+            return { date, title, content, firstLine };
+        }
+        
+        // 创建安全的文件名
+        function createSafeFileName(date, title) {
+            const safeTitle = title
+                .replace(/[<>:"/\\|?*]/g, '_')  // 替换不安全字符
+                .replace(/\s+/g, '_')           // 空格替换为下划线
+                .substring(0, 50);              // 限制长度
+            return `${date}_${safeTitle}.md`;
+        }
+        
+        // 主处理逻辑
+        async function processDiary() {
+            const diary = parseDiaryEntry(text);
+            if (!diary) {
+                console.log('FORMAT_ERROR');
+                return;
+            }
+            
+            const { date, title, content, firstLine } = diary;
+            const [year, month] = date.split('-').slice(0, 2);
+            const monthDir = `diaries/${year}-${month}`;
+            const fileName = createSafeFileName(date, title);
+            const filePath = path.join(monthDir, fileName);
+            
+            console.log(`Processing diary for ${date}: ${title}`);
+            console.log(`Target file: ${filePath}`);
+            
+            // 创建目录
+            if (!fs.existsSync('diaries')) {
+                fs.mkdirSync('diaries');
+            }
+            if (!fs.existsSync(monthDir)) {
+                fs.mkdirSync(monthDir, { recursive: true });
+            }
+            
+            // 检查是否存在相同日期和标题的文件
+            let isUpdate = false;
+            if (fs.existsSync(monthDir)) {
+                const existingFiles = fs.readdirSync(monthDir);
+                const existingFile = existingFiles.find(file => {
+                    if (!file.endsWith('.md')) return false;
+                    
+                    // 从文件名提取日期和标题
+                    const baseName = file.replace('.md', '');
+                    const parts = baseName.split('_');
+                    const fileDate = parts[0];
+                    const fileTitle = parts.slice(1).join('_');
+                    
+                    // 比较日期和标题
+                    const currentSafeTitle = title
+                        .replace(/[<>:"/\\|?*]/g, '_')
+                        .replace(/\s+/g, '_')
+                        .substring(0, 50);
+                    
+                    return fileDate === date && fileTitle === currentSafeTitle;
+                });
+                
+                if (existingFile) {
+                    console.log(`Found existing file: ${existingFile}`);
+                    fs.unlinkSync(path.join(monthDir, existingFile));
+                    isUpdate = true;
+                }
+            }
+            
+            // 创建markdown内容
+            const fullContent = `# ${title}
+
+*${date}*
+
+${content}`;
+            
+            // 写入文件
+            fs.writeFileSync(filePath, fullContent, 'utf8');
+            
+            console.log(isUpdate ? 'UPDATED' : 'CREATED');
+            console.log(`File saved successfully: ${filePath}`);
+            
+            // 验证文件是否正确写入
+            if (fs.existsSync(filePath)) {
+                const savedContent = fs.readFileSync(filePath, 'utf8');
+                console.log(`File size: ${savedContent.length} characters`);
+            }
+        }
+        
+        processDiary().catch(error => {
+            console.error('Error processing diary:', error);
+            console.log('ERROR');
+        });
+        EOF
+        
+        # 运行处理脚本
+        export GITHUB_EVENT_CLIENT_PAYLOAD='${{ toJson(github.event.client_payload) }}'
+        node process_diary.js > result.txt 2>&1
+        
+        # 显示结果
+        echo "=== Process Result ==="
+        cat result.txt
+        echo "===================="
+        
+        # 提取最后一行作为结果
+        RESULT=$(grep -E "^(FORMAT_ERROR|UPDATED|CREATED|ERROR)$" result.txt | tail -1)
+        echo "RESULT=$RESULT" >> $GITHUB_ENV
+        
+        # 提交更改
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Bot"
+        
+        # 添加所有更改
+        git add diaries/
+        
+        # 检查是否有更改
+        if ! git diff --cached --quiet; then
+          COMMIT_MSG="📝 Add/Update diary entry - $(date '+%Y-%m-%d %H:%M:%S')"
+          git commit -m "$COMMIT_MSG"
+          git push
+          echo "✅ Changes committed and pushed successfully"
+        else
+          echo "ℹ️  No changes to commit"
+        fi
+        
+    - name: Send Telegram response
+      if: always()
+      run: |
+        # 根据结果发送不同的响应消息
+        case "$RESULT" in
+          "FORMAT_ERROR")
+            MESSAGE="❌ 格式错误！%0A%0A请使用以下格式：%0A%0A\`2025-08-25 标题\`%0A日记内容..."
+            ;;
+          "UPDATED")
+            MESSAGE="✅ 日记已更新！%0A%0A可以在网站上查看更新后的内容。"
+            ;;
+          "CREATED")
+            MESSAGE="✅ 日记已添加！%0A%0A新的日记已保存到GitHub仓库。"
+            ;;
+          "ERROR")
+            MESSAGE="❌ 处理失败，请稍后重试或检查格式是否正确。"
+            ;;
+          *)
+            MESSAGE="✅ 处理完成！"
+            ;;
+        esac
+        
+        CHAT_ID='${{ github.event.client_payload.chat_id }}'
+        TELEGRAM_TOKEN='${{ secrets.TELEGRAM_TOKEN }}'
+        
+        if [ -n "$CHAT_ID" ] && [ -n "$TELEGRAM_TOKEN" ]; then
+          echo "Sending response to chat $CHAT_ID"
+          
+          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "chat_id=${CHAT_ID}&text=${MESSAGE}&parse_mode=Markdown")
+          
+          echo "Telegram API response: $RESPONSE"
+        else
+          echo "Missing CHAT_ID or TELEGRAM_TOKEN"
+        fi
