@@ -271,12 +271,30 @@
         // GitHub配置 - 请修改为你的信息
         const GITHUB_CONFIG = {
             owner: 'eeSine',        // 你的GitHub用户名
-            repo: 'diary',       // 你的日记仓库名
-            branch: 'main'                 // 分支名，通常是main或master
+            repo: 'diary',          // 你的日记仓库名
+            branch: 'main'          // 分支名，通常是main或master
         };
         
         let currentMonth = null;
         let availableMonths = [];
+        
+        // 修复可能的编码问题
+        function fixEncoding(text) {
+            try {
+                // 如果是乱码，尝试重新解码
+                if (text.includes('ä') || text.includes('å') || text.includes('ï')) {
+                    // 这些可能是UTF-8被错误解码的标志
+                    const encoder = new TextEncoder();
+                    const decoder = new TextDecoder('utf-8');
+                    const bytes = encoder.encode(text);
+                    return decoder.decode(bytes);
+                }
+                return text;
+            } catch (error) {
+                console.warn('编码修复失败:', error);
+                return text;
+            }
+        }
         
         // 获取GitHub文件
         async function fetchGitHubFile(path) {
@@ -288,7 +306,9 @@
                     throw new Error(`GitHub API error: ${response.status}`);
                 }
                 const data = await response.json();
-                return atob(data.content);
+                // 确保正确解码Base64内容
+                const content = decodeURIComponent(escape(atob(data.content)));
+                return fixEncoding(content);
             } catch (error) {
                 console.error(`获取文件失败: ${path}`, error);
                 return null;
@@ -388,8 +408,8 @@
                         
                         diaries.push({
                             date,
-                            title,
-                            content: content.trim(),
+                            title: fixEncoding(title),
+                            content: fixEncoding(content.trim()),
                             fileName: file.name
                         });
                     }
