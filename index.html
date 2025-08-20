@@ -570,7 +570,7 @@
                         if (content) {
                             const fileName = file.name.replace('.md', '');
                             const [date, ...titleParts] = fileName.split('_');
-                            const title = titleParts.join('_') || '无标题';
+                            const title = titleParts.join('_').replace(/_/g, ' ') || '无标题';
                             
                             const diary = {
                                 date,
@@ -716,20 +716,51 @@
                 return;
             }
             
+            const saveBtn = document.querySelector('.save-btn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '💾 保存中...';
+            saveBtn.disabled = true;
+            
             try {
-                // 这里需要调用GitHub API更新文件
-                // 由于这需要写权限，建议通过后端API或GitHub Actions来实现
-                alert('保存功能需要后端支持，当前仅为演示模式');
+                // 使用后端API保存
+                const response = await fetch('/api/edit-diary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filePath: currentDiary.path,
+                        content: newContent,
+                        title: currentDiary.title
+                    })
+                });
                 
-                // 模拟保存成功
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '保存失败');
+                }
+                
+                // 更新本地数据
                 currentDiary.content = newContent;
                 originalContent = newContent;
+                
+                // 更新显示
                 document.getElementById('modalContent').innerHTML = marked.parse(newContent);
                 exitEditMode();
                 
+                // 重新加载以确保同步
+                setTimeout(() => {
+                    loadAvailableMonths();
+                }, 1000);
+                
+                alert('✅ 保存成功！');
+                
             } catch (error) {
                 console.error('保存失败:', error);
-                alert('保存失败: ' + error.message);
+                alert('❌ 保存失败: ' + error.message);
+            } finally {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
             }
         }
         
@@ -742,12 +773,42 @@
                 const query = this.value.trim().toLowerCase();
                 if (query.length < 2) {
                     searchResults.innerHTML = '';
+                    displayCurrentView();
                     return;
                 }
                 
                 const results = searchDiaries(query);
                 displaySearchResults(results, query);
             }, 300));
+        }
+        
+        // 显示当前视图（非搜索状态）
+        function displayCurrentView() {
+            // 重新显示正常的月份视图
+            if (allDiaries.length > 0) {
+                const monthData = groupDiariesByMonth();
+                displayMonths(monthData);
+            }
+        }
+        
+        // 按月份分组日记
+        function groupDiariesByMonth() {
+            const monthGroups = {};
+            allDiaries.forEach(diary => {
+                if (!monthGroups[diary.month]) {
+                    monthGroups[diary.month] = [];
+                }
+                monthGroups[diary.month].push(diary);
+            });
+            
+            return Object.keys(monthGroups)
+                .sort()
+                .reverse()
+                .map(month => ({
+                    month,
+                    diaries: monthGroups[month],
+                    count: monthGroups[month].length
+                }));
         }
         
         // 搜索日记
@@ -762,22 +823,34 @@
         // 显示搜索结果
         function displaySearchResults(results, query) {
             const searchResults = document.getElementById('searchResults');
+            const container = document.getElementById('diary-container');
             
             if (results.length === 0) {
                 searchResults.innerHTML = '没有找到相关日记';
+                container.innerHTML = '<div class="no-entries">📝 没有找到相关日记</div>';
                 return;
             }
             
-            searchResults.innerHTML = `
-                找到 ${results.length} 篇相关日记：
-                <div style="margin-top: 10px;">
-                    ${results.map(diary => `
-                        <div style="cursor: pointer; padding: 8px; background: rgba(102, 126, 234, 0.1); margin: 5px 0; border-radius: 5px;" 
-                             onclick="openDiary('${diary.path}')">
-                            <strong>${highlightText(diary.title, query)}</strong> - ${diary.date}
-                            <br><small>${highlightText(getPreview(diary.content), query)}</small>
+            searchResults.innerHTML = `找到 ${results.length} 篇相关日记`;
+            
+            // 在主容器中显示搜索结果
+            container.innerHTML = `
+                <div class="months-grid">
+                    <div class="month-card expanded">
+                        <div class="month-header">
+                            <div class="month-title">🔍 搜索结果</div>
+                            <div class="month-count">${results.length} 篇</div>
                         </div>
-                    `).join('')}
+                        <div class="diary-list" style="display: block;">
+                            ${results.map(diary => `
+                                <div class="diary-item" onclick="openDiary('${diary.path}')">
+                                    <div class="diary-item-title">${highlightText(diary.title, query)}</div>
+                                    <div class="diary-item-date">${diary.date}</div>
+                                    <div class="diary-item-preview">${highlightText(getPreview(diary.content), query)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
             `;
         }
