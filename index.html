@@ -195,7 +195,259 @@
             display: none;
         }
 
+        .edit-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .edit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .diary-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e6ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .diary-header-left {
+            flex: 1;
+        }
+
+        .diary-header-right {
+            display: flex;
+            align-items: center;
+        }
+
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .edit-modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .edit-container {
+            background: white;
+            width: 95%;
+            height: 90%;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .edit-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .edit-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .edit-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-controls button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .save-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .save-btn:hover {
+            background: #218838;
+        }
+
+        .cancel-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .cancel-btn:hover {
+            background: #5a6268;
+        }
+
+        .edit-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .edit-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .edit-pane-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e6ed;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .edit-textarea {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 20px;
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            background: #fafafa;
+        }
+
+        .preview-pane {
+            border-left: 1px solid #e0e6ed;
+            background: white;
+        }
+
+        .preview-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .preview-content h1,
+        .preview-content h2,
+        .preview-content h3 {
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .preview-content h1 {
+            font-size: 24px;
+            border-bottom: 2px solid #e0e6ed;
+            padding-bottom: 8px;
+        }
+
+        .preview-content h2 {
+            font-size: 20px;
+        }
+
+        .preview-content h3 {
+            font-size: 18px;
+        }
+
+        .preview-content p {
+            margin-bottom: 16px;
+            line-height: 1.8;
+        }
+
+        .preview-content ul,
+        .preview-content ol {
+            margin-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .preview-content li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .preview-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin: 16px 0;
+            color: #666;
+            font-style: italic;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .preview-content code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .preview-content pre {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .preview-content strong {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .preview-content em {
+            font-style: italic;
+            color: #666;
+        }
+
         @media (max-width: 768px) {
+            .edit-container {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+
+            .edit-content {
+                flex-direction: column;
+            }
+
+            .preview-pane {
+                border-left: none;
+                border-top: 1px solid #e0e6ed;
+            }
+
+            .diary-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .diary-header-right {
+                align-self: flex-end;
+            }
             .container {
                 padding: 15px;
             }
@@ -239,6 +491,31 @@
         </div>
     </div>
 
+    <!-- 编辑模态框 -->
+    <div class="edit-modal" id="editModal">
+        <div class="edit-container">
+            <div class="edit-header">
+                <div class="edit-title" id="editTitle">编辑日记</div>
+                <div class="edit-controls">
+                    <button class="save-btn" id="saveBtn">💾 保存</button>
+                    <button class="cancel-btn" id="cancelBtn">❌ 取消</button>
+                </div>
+            </div>
+            <div class="edit-content">
+                <div class="edit-pane">
+                    <div class="edit-pane-header">📝 编辑器</div>
+                    <textarea class="edit-textarea" id="editTextarea" placeholder="在这里编辑你的日记内容..."></textarea>
+                </div>
+                <div class="edit-pane preview-pane">
+                    <div class="edit-pane-header">👁️ 预览</div>
+                    <div class="preview-content" id="previewContent">
+                        <p>在左边编辑内容，这里会实时显示预览效果...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // GitHub 配置
         const GITHUB_CONFIG = {
@@ -249,11 +526,13 @@
 
         let allDiaries = [];
         let currentSearchTerm = '';
+        let currentEditingDiary = null;
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
             loadDiaries();
             setupSearch();
+            setupEditModal();
         });
 
         // 设置搜索功能
@@ -509,8 +788,15 @@
             
             div.innerHTML = `
                 <div class="diary-header">
-                    <div class="diary-date">${formattedDate}</div>
-                    <div class="diary-title">${highlightText(diary.title, searchTerm)}</div>
+                    <div class="diary-header-left">
+                        <div class="diary-date">${formattedDate}</div>
+                        <div class="diary-title">${highlightText(diary.title, searchTerm)}</div>
+                    </div>
+                    <div class="diary-header-right">
+                        <button class="edit-btn" onclick="openEditModal(${JSON.stringify(diary).replace(/"/g, '&quot;')})">
+                            ✏️ 编辑
+                        </button>
+                    </div>
                 </div>
                 <div class="diary-content">
                     ${highlightText(processedContent, searchTerm)}
